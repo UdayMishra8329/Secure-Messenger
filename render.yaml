@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: secure-messenger
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DAILY_SECRET
+        generateValue: true

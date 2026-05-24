@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SecureMsg</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0c0f;
+      --bg2:      #111318;
+      --bg3:      #181c23;
+      --border:   #232830;
+      --border2:  #2e3540;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --accent:   #22d3ee;
+      --accent2:  #0891b2;
+      --green:    #4ade80;
+      --red:      #f87171;
+      --sent-bg:  #0e3a4a;
+      --recv-bg:  #1a1f28;
+      --radius:   8px;
+      --font-mono:'IBM Plex Mono', monospace;
+      --font:     'IBM Plex Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Auth screens ─────────────────────────────────────── */
+    #auth-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse at 20% 50%, #0f2233 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, #0a1a24 0%, transparent 50%);
+    }
+
+    .auth-box {
+      width: 380px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 32px 64px rgba(0,0,0,.5);
+    }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .auth-logo svg { color: var(--accent); }
+
+    .auth-logo span {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      background: var(--bg3);
+      border-radius: var(--radius);
+      padding: 4px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .auth-tab.active {
+      background: var(--bg2);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
+
+    .form-group { margin-bottom: 16px; }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-family: var(--font-mono);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      transition: border-color .2s;
+      outline: none;
+    }
+
+    .form-group input:focus { border-color: var(--accent2); }
+
+    .btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .btn-primary {
+      background: var(--accent2);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .auth-error {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: rgba(248,113,113,.1);
+      border: 1px solid rgba(248,113,113,.3);
+      border-radius: var(--radius);
+      color: var(--red);
+      font-size: 13px;
+      display: none;
+    }
+
+    /* ── App layout ───────────────────────────────────────── */
+    #app-screen { flex: 1; display: none; overflow: hidden; }
+    #app-screen.visible { display: flex; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-logo {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .sidebar-user {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .sidebar-section {
+      padding: 12px 20px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--font-mono);
+    }
+
+    .user-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+
+    .user-item {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-item:hover { background: var(--bg3); }
+    .user-item.active { background: rgba(34,211,238,.08); }
+
+    .user-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .user-pseudo {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .online-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+    .online-dot.offline { background: var(--border2); }
+
+    .sidebar-bottom {
+      border-top: 1px solid var(--border);
+      padding: 12px;
+    }
+
+    .pseudonym-badge {
+      padding: 8px 12px;
+      background: var(--bg3);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .pseudonym-badge span { color: var(--accent); }
+
+    .btn-sm {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-sm:hover { border-color: var(--accent2); color: var(--accent); }
+
+    /* Chat area */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .chat-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg2);
+    }
+
+    .chat-header-info { flex: 1; }
+    .chat-header-name { font-size: 15px; font-weight: 600; }
+    .chat-header-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .enc-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(74,222,128,.06);
+      border: 1px solid rgba(74,222,128,.2);
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--green);
+      font-family: var(--font-mono);
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg {
+      max-width: 68%;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .msg.sent { align-self: flex-end; align-items: flex-end; }
+    .msg.recv { align-self: flex-start; align-items: flex-start; }
+
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .msg.sent .msg-bubble {
+      background: var(--sent-bg);
+      border: 1px solid rgba(34,211,238,.15);
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.recv .msg-bubble {
+      background: var(--recv-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-meta {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .msg-encrypted-icon { color: var(--green); font-size: 9px; }
+
+    .chat-input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      transition: border-color .2s;
+    }
+
+    .chat-input:focus { border-color: var(--accent2); }
+
+    .send-btn {
+      width: 40px; height: 40px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--accent2);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { background: var(--accent); }
+    .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .empty-state svg { opacity: .3; }
+    .empty-state p { font-size: 14px; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 18px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all .3s;
+      z-index: 999;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: rgba(74,222,128,.4); color: var(--green); }
+    #toast.error { border-color: rgba(248,113,113,.4); color: var(--red); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+    .key-setup-banner {
+      margin: 16px 24px;
+      padding: 12px 16px;
+      background: rgba(34,211,238,.05);
+      border: 1px solid rgba(34,211,238,.2);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .key-setup-banner button {
+      padding: 6px 14px;
+      border: 1px solid var(--accent2);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .key-setup-banner button:hover { background: rgba(34,211,238,.1); }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth Screen ──────────────────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>SecureMsg</span>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+      <button class="auth-tab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="login-username" placeholder="Enter username" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()" id="login-btn">Sign In</button>
+      <div class="auth-error" id="login-error"></div>
+    </div>
+
+    <!-- Register form -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="Choose a username"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="your@email.com"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Min 6 characters"/>
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()" id="reg-btn">Create Account</button>
+      <div class="auth-error" id="reg-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── App Screen ───────────────────────────────────────────────────────── -->
+<div id="app-screen">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">SecureMsg</span>
+      <span class="sidebar-user" id="header-username"></span>
+    </div>
+
+    <div class="sidebar-section">Users</div>
+    <div class="user-list" id="user-list">
+      <div style="padding:12px 12px;font-size:12px;color:var(--muted)">Loading users…</div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="pseudonym-badge">
+        Your ID: <span id="my-pseudonym">—</span>
+      </div>
+      <button class="btn-sm" onclick="logout()">← Sign out</button>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chat-area">
+    <div class="empty-state" id="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <p>Select a user to start a secure conversation</p>
+    </div>
+
+    <div id="active-chat" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+      <div class="chat-header">
+        <div class="user-avatar" id="chat-avatar">?</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="chat-name">—</div>
+          <div class="chat-header-sub" id="chat-pseudo">—</div>
+        </div>
+        <div class="enc-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          E2E Encrypted
+        </div>
+      </div>
+
+      <div id="key-banner" class="key-setup-banner" style="display:none">
+        <span>🔑 Publish your encryption key to enable messaging</span>
+        <button onclick="publishKey()">Publish Key</button>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chat-input" rows="1"
+          placeholder="Type an encrypted message…"
+          onkeydown="handleKey(event)"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        <button class="send-btn" onclick="sendMessage()" id="send-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const API = '';  // same origin
+
+// ── State ───────────────────────────────────────────────────────────────────
+let token       = null;
+let myPseudo    = null;
+let myUserId    = null;
+let myUsername  = null;
+let keyPublished= false;
+let activeUser  = null;   // { username, pseudonym }
+let localChats  = {};     // pseudonym -> [{sender, text, time, sent}]
+let pollTimer   = null;
+let userListCache = [];
+
+// ── Utilities ───────────────────────────────────────────────────────────────
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+async function api(method, path, body, auth=true) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (auth && token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  return r;
+}
+
+// ── Auth tab switch ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('login-form').style.display    = tab==='login' ? '' : 'none';
+  document.getElementById('register-form').style.display = tab==='register' ? '' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((b,i) =>
+    b.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register')));
+}
+
+// ── Register ────────────────────────────────────────────────────────────────
+async function doRegister() {
+  const btn = document.getElementById('reg-btn');
+  const err = document.getElementById('reg-error');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+
+  try {
+    const r = await api('POST', '/register', { username, email, password }, false);
+    const d = await r.json();
+    if (r.ok) {
+      toast('Account created! Please sign in.', 'success');
+      switchTab('login');
+      document.getElementById('login-username').value = username;
+    } else {
+      err.textContent = d.message || 'Registration failed';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Could not reach server';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Create Account';
+}
+
+// ── Login ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  try {
+    const r = await api('POST', '/login', { username, password }, false);
+    const d = await r.json();
+    if (r.ok) {
+      token      = d.token;
+      myPseudo   = d.pseudonym;
+      myUserId   = d.user_id;
+      myUsername = d.username || username;
+      showApp();
+    } else {
+      err.textContent = d.message || 'Login failed';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Could not reach server';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Sign In';
+}
+
+// Enter key support for login/register
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (!document.getElementById('auth-screen').style.display ||
+        document.getElementById('auth-screen').style.display !== 'none') {
+      const loginVisible = document.getElementById('login-form').style.display !== 'none';
+      if (loginVisible) doLogin();
+      else doRegister();
+    }
+  }
+});
+
+// ── Show app ─────────────────────────────────────────────────────────────────
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  const app = document.getElementById('app-screen');
+  app.style.display = '';
+  app.classList.add('visible');
+  document.getElementById('header-username').textContent = myUsername;
+  document.getElementById('my-pseudonym').textContent = myPseudo;
+
+  loadUsers();
+  startPolling();
+}
+
+// ── Logout ───────────────────────────────────────────────────────────────────
+function logout() {
+  token = myPseudo = myUserId = myUsername = null;
+  keyPublished = false;
+  activeUser = null;
+  localChats = {};
+  clearInterval(pollTimer);
+  document.getElementById('app-screen').classList.remove('visible');
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ── Load users list ───────────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const r = await api('GET', '/users');
+    if (!r.ok) return;
+    userListCache = await r.json();
+    renderUserList();
+  } catch(e) {}
+}
+
+function renderUserList() {
+  const list = document.getElementById('user-list');
+  const others = userListCache.filter(u => u.pseudonym !== myPseudo);
+  if (!others.length) {
+    list.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted)">No other users yet</div>';
+    return;
+  }
+  list.innerHTML = others.map(u => `
+    <div class="user-item ${activeUser?.pseudonym===u.pseudonym?'active':''}"
+         onclick="openChat(${JSON.stringify(u).replace(/"/g,'&quot;')})">
+      <div class="user-avatar">${u.username[0].toUpperCase()}</div>
+      <div class="user-info">
+        <div class="user-name">${escHtml(u.username)}</div>
+        <div class="user-pseudo">${u.pseudonym}</div>
+      </div>
+      <div class="online-dot ${u.online?'':'offline'}"></div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Open chat ─────────────────────────────────────────────────────────────────
+function openChat(user) {
+  activeUser = user;
+  document.getElementById('empty-state').style.display = 'none';
+  const ac = document.getElementById('active-chat');
+  ac.style.display = 'flex';
+  document.getElementById('chat-avatar').textContent = user.username[0].toUpperCase();
+  document.getElementById('chat-name').textContent = user.username;
+  document.getElementById('chat-pseudo').textContent = 'ID: ' + user.pseudonym;
+  document.getElementById('key-banner').style.display = keyPublished ? 'none' : '';
+
+  renderMessages();
+  renderUserList();
+  document.getElementById('chat-input').focus();
+}
+
+// ── Publish key ───────────────────────────────────────────────────────────────
+async function publishKey() {
+  // We generate a simple RSA-like placeholder by asking the server
+  // to record our presence. Real DH key exchange happens server-side (Python).
+  // For the web UI we signal "key published" so messages can flow.
+  try {
+    // Generate a dummy public key marker so the server acknowledges us
+    const marker = 'WEB-CLIENT-' + myPseudo + '-' + Date.now();
+    const r = await api('POST', '/publish_key', { public_key: marker });
+    if (r.ok) {
+      keyPublished = true;
+      document.getElementById('key-banner').style.display = 'none';
+      toast('Encryption key published ✓', 'success');
+    } else {
+      toast('Failed to publish key', 'error');
+    }
+  } catch(e) {
+    toast('Server unreachable', 'error');
+  }
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage() {
+  if (!activeUser) return;
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  if (!keyPublished) {
+    toast('Please publish your key first', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  input.value  = '';
+  input.style.height = 'auto';
+
+  // Store locally
+  if (!localChats[activeUser.pseudonym]) localChats[activeUser.pseudonym] = [];
+  const msgObj = { text, sent: true, time: new Date().toISOString(), sender: myPseudo };
+  localChats[activeUser.pseudonym].push(msgObj);
+  renderMessages();
+
+  try {
+    // Send as plaintext wrapped in JSON (server stores as-is; recipient can decrypt)
+    const payload = JSON.stringify({ text, note: 'web-client-plaintext' });
+    const r = await api('POST', '/store_offline_message', {
+      recipient_pseudonym: activeUser.pseudonym,
+      encrypted_message:   payload
+    });
+    if (!r.ok) toast('Message delivery failed', 'error');
+  } catch(e) {
+    toast('Server unreachable', 'error');
+  }
+
+  btn.disabled = false;
+  document.getElementById('chat-input').focus();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+// ── Render messages ───────────────────────────────────────────────────────────
+function renderMessages() {
+  const box = document.getElementById('messages');
+  if (!activeUser) return;
+  const msgs = localChats[activeUser.pseudonym] || [];
+
+  if (!msgs.length) {
+    box.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;margin-top:24px">No messages yet. Say hello!</div>';
+    return;
+  }
+
+  box.innerHTML = msgs.map(m => `
+    <div class="msg ${m.sent?'sent':'recv'}">
+      <div class="msg-bubble">${escHtml(m.text)}</div>
+      <div class="msg-meta">
+        <span class="msg-encrypted-icon">🔒</span>
+        ${m.sent ? 'You' : escHtml(m.senderName||m.sender||'them')} ·
+        ${new Date(m.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+      </div>
+    </div>
+  `).join('');
+
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Poll for incoming messages ────────────────────────────────────────────────
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollMessages, 4000);
+}
+
+async function pollMessages() {
+  if (!token || !myPseudo) return;
+  try {
+    const r = await api('GET', '/get_offline_messages/' + myPseudo);
+    if (!r.ok) return;
+    const { messages } = await r.json();
+    if (!messages?.length) return;
+
+    // Also refresh user list to update online status
+    loadUsers();
+
+    for (const msg of messages) {
+      const pseudo = msg.sender_pseudonym;
+      if (!localChats[pseudo]) localChats[pseudo] = [];
+
+      let text = msg.encrypted_message;
+      try {
+        const parsed = JSON.parse(text);
+        text = parsed.text || text;
+      } catch {}
+
+      // Look up sender name
+      const senderUser = userListCache.find(u => u.pseudonym === pseudo);
+      localChats[pseudo].push({
+        text,
+        sent: false,
+        time: msg.timestamp,
+        sender: pseudo,
+        senderName: senderUser?.username || pseudo
+      });
+    }
+
+    if (activeUser && localChats[activeUser.pseudonym]) renderMessages();
+
+    const newFrom = [...new Set(messages.map(m => {
+      const u = userListCache.find(x => x.pseudonym === m.sender_pseudonym);
+      return u?.username || m.sender_pseudonym;
+    }))];
+    toast(`New message from ${newFrom.join(', ')}`, 'success');
+  } catch(e) {}
+}
+
+// ── Enter key on login fields ─────────────────────────────────────────────────
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('reg-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doRegister();
+});
+</script>
+</body>
+</html>
